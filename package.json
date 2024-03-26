@@ -1,6 +1,6 @@
 {
-  "name": "@rurruur/create-test",
-  "version": "0.0.1",
+  "name": "@nakkim/create-test",
+  "version": "0.1.0",
   "description": "Practice npm initializer",
   "type": "module",
   "bin": "index.js",
@@ -20,8 +20,7 @@
     "url": "https://github.com/rurruur/create-test"
   },
   "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",

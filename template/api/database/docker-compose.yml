@@ -1,0 +1,23 @@
+version: "3"
+
+services:
+  mysql80:
+    platform: linux/amd64
+    image: mysql:8.0.32
+    container_name: test
+    volumes:
+      - ./scripts/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      MYSQL_DATABASE: test
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
+      TZ: Asia/Seoul
+    ports:
+      - 3306:3306
+  redis:
+    platform: linux/amd64
+    image: redis:6.2
+    environment:
+      TZ: Asia/Seoul
+    ports:
+      - 6379:6379

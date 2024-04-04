@@ -5,7 +5,8 @@ import * as fs from "node:fs";
 
 import prompts from "prompts";
 import { spawn } from "node:child_process";
-import ProgressBar from "progress";
+import chalk from "chalk";
+import ora from "ora";
 
 async function init() {
   const defaultProjectName = "pp1";
@@ -47,7 +48,13 @@ async function init() {
         copy(srcFile, destFile);
       }
     } else {
+      // .gitkeep 제외, 디렉토리 생성 로그 출력
+      if (path.basename(src) === ".gitkeep") {
+        console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
+        return;
+      }
       fs.copyFileSync(src, dest);
+      console.log(`${chalk.green("CREATE")} ${dest}`);
     }
   };
 
@@ -57,11 +64,13 @@ async function init() {
     copy(src, dest);
   };
 
+  // Copy all files except package.json
   const files = fs.readdirSync(templateRoot);
   for (const file of files.filter((f) => f !== "package.json")) {
     write(file);
   }
 
+  // Copy package.json
   const pkg = JSON.parse(
     fs.readFileSync(path.join(templateRoot, "api", "package.json"), "utf-8"),
   );
@@ -77,6 +86,7 @@ async function init() {
 
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
+  // Set up Yarn Berry
   const { isBerry } = await prompts({
     type: "confirm",
     name: "isBerry",
@@ -90,25 +100,16 @@ async function init() {
     const commands = [
       "yarn set version berry",
       "yarn install",
-      "yarn @yarnpkg/sdks vscode",
+      "yarn dlx @yarnpkg/sdks vscode",
     ];
 
-    for await (const command of commands) {
-      const child = spawn("yarn", command.split(" ").splice(1), {
-        cwd: apiRoot,
-      });
-      const bar = new ProgressBar(`${command} [:bar] :percent :etas`, {
-        complete: "=",
-        incomplete: " ",
-        width: 40,
-        total: child.stdout.readableLength,
-      });
+    for await (const c of commands) {
+      const [command, ...args] = c.split(" ");
+      const child = spawn(command, args, { cwd: apiRoot });
+      const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
 
-      child.stdout.pipe(process.stdout);
-      child.stdout.on("data", (data) => {
-        bar.tick(data.length);
-      });
       child.on("error", (error) => {
+        spinner.fail();
         console.error(`❌ Error: ${command}`);
         console.error(error);
         throw error;
@@ -116,17 +117,18 @@ async function init() {
 
       await new Promise((resolve) => {
         child.on("close", () => {
+          spinner.succeed();
           resolve("");
         });
       });
     }
-    console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
+    console.log(`\nYarn Berry has been set up in ${apiRoot}\n`);
   } else {
-    console.log(`\nTo set up Yarn Berry, run the following commands:`);
-    console.log(`  cd ${targetDir}/api`);
-    console.log(`  yarn set version berry`);
-    console.log(`  yarn install`);
-    console.log(`  yarn dlx @yarnpkg/sdks vscode`);
+    console.log(`\nTo set up Yarn Berry, run the following commands:\n`);
+    console.log(chalk.gray(`  $ cd ${targetDir}/api`));
+    console.log(chalk.gray(`  $ yarn set version berry`));
+    console.log(chalk.gray(`  $ yarn install`));
+    console.log(chalk.gray(`  $ yarn dlx @yarnpkg/sdks vscode`));
   }
 }
 

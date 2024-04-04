@@ -1,7 +1,7 @@
 import { SonamuDBConfig } from "sonamu";
 
 const conf = {
-  database: "test",
+  database: process.env.MYSQL_DATABASE,
   default: {
     client: "mysql2",
     useNullAsDefault: true,

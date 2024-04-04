@@ -4,7 +4,8 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 
 import prompts from "prompts";
-import { execSync } from "node:child_process";
+import { spawn } from "node:child_process";
+import ProgressBar from "progress";
 
 async function init() {
   const defaultProjectName = "pp1";
@@ -86,14 +87,40 @@ async function init() {
   if (isBerry) {
     console.log(`\nSetting up Yarn Berry...`);
     const apiRoot = path.join(targetRoot, "api");
-    try {
-      execSync("yarn set version berry", { cwd: apiRoot });
-      execSync("yarn install", { cwd: apiRoot });
-      execSync("yarn dlx @yarnpkg/sdks vscode", { cwd: apiRoot });
-      console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
-    } catch (error) {
-      console.error(error);
+    const commands = [
+      "yarn set version berry",
+      "yarn install",
+      "yarn @yarnpkg/sdks vscode",
+    ];
+
+    for await (const command of commands) {
+      const child = spawn("yarn", command.split(" ").splice(1), {
+        cwd: apiRoot,
+      });
+      const bar = new ProgressBar(`${command} [:bar] :percent :etas`, {
+        complete: "=",
+        incomplete: " ",
+        width: 40,
+        total: child.stdout.readableLength,
+      });
+
+      child.stdout.pipe(process.stdout);
+      child.stdout.on("data", (data) => {
+        bar.tick(data.length);
+      });
+      child.on("error", (error) => {
+        console.error(`❌ Error: ${command}`);
+        console.error(error);
+        throw error;
+      });
+
+      await new Promise((resolve) => {
+        child.on("close", () => {
+          resolve("");
+        });
+      });
     }
+    console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
   } else {
     console.log(`\nTo set up Yarn Berry, run the following commands:`);
     console.log(`  cd ${targetDir}/api`);

@@ -142,14 +142,22 @@ async function init() {
   if (isDatabase) {
     console.log(`\nSetting up a database using Docker...`);
 
-    // database 디렉토리 복사
-    const databaseSrc = path.join(templateRoot, "api", "database");
-    const databaseDest = path.join(targetRoot, "api", "database");
-    copy(databaseSrc, databaseDest);
+    // 프롬프트로 입력 받아서 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD .env 파일에 추가
+    const answers = await promptDatabase(targetDir);
+    const env = `# Database
+DB_HOST=0.0.0.0
+DB_USER=root
+DB_PASSWORD=${answers.DB_PASSWORD}
+DOCKER_PROJECT_NAME=${answers.DOCKER_PROJECT_NAME}
+MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
+MYSQL_DATABASE=${answers.MYSQL_DATABASE}
+`;
+    fs.writeFileSync(path.join(targetRoot, "api", ".env"), env);
 
     // docker-compose 실행
     const databaseRoot = path.join(targetRoot, "api", "database");
-    const commands = [`docker-compose -p ${targetDir} up -d`];
+    const envFile = path.join(targetRoot, "api", ".env");
+    const commands = [`docker-compose --env-file ${envFile} up -d`];
 
     for await (const c of commands) {
       const [command, ...args] = c.split(" ");
@@ -179,6 +187,37 @@ async function init() {
     console.log(chalk.gray(`  $ docker-compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
   }
+}
+
+// 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수
+async function promptDatabase(projectName: string) {
+  const answers = await prompts([
+    {
+      type: "text",
+      name: "DOCKER_PROJECT_NAME",
+      message: "Enter the Docker project name:",
+      initial: `${projectName}`,
+    },
+    {
+      type: "text",
+      name: "MYSQL_CONTAINER_NAME",
+      message: "Enter the MySQL container name:",
+      initial: "mysql",
+    },
+    {
+      type: "text",
+      name: "MYSQL_DATABASE",
+      message: "Enter the MySQL database name:",
+      initial: `${projectName}`,
+    },
+    {
+      type: "password",
+      name: "DB_PASSWORD",
+      message: "Enter the MySQL database password:",
+    },
+  ]);
+
+  return answers;
 }
 
 init().catch((e) => {

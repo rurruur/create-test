@@ -64,13 +64,13 @@ async function init() {
     copy(src, dest);
   };
 
-  // Copy all files except package.json
+  // 1. Copy all files except package.json
   const files = fs.readdirSync(templateRoot);
   for (const file of files.filter((f) => f !== "package.json")) {
     write(file);
   }
 
-  // Copy package.json
+  // 2. Copy package.json and modify name
   const pkg = JSON.parse(
     fs.readFileSync(path.join(templateRoot, "api", "package.json"), "utf-8"),
   );
@@ -86,7 +86,7 @@ async function init() {
 
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
 
-  // Set up Yarn Berry
+  // 3. Set up Yarn Berry
   const { isBerry } = await prompts({
     type: "confirm",
     name: "isBerry",
@@ -128,7 +128,56 @@ async function init() {
     console.log(chalk.gray(`  $ cd ${targetDir}/api`));
     console.log(chalk.gray(`  $ yarn set version berry`));
     console.log(chalk.gray(`  $ yarn install`));
-    console.log(chalk.gray(`  $ yarn dlx @yarnpkg/sdks vscode`));
+    console.log(chalk.gray(`  $ yarn dlx @yarnpkg/sdks vscode\n`));
+  }
+
+  // 4. Set up Database using Docker
+  const { isDatabase } = await prompts({
+    type: "confirm",
+    name: "isDatabase",
+    message: "Would you like to set up a database using Docker?",
+    initial: false,
+  });
+
+  if (isDatabase) {
+    console.log(`\nSetting up a database using Docker...`);
+
+    // database 디렉토리 복사
+    const databaseSrc = path.join(templateRoot, "api", "database");
+    const databaseDest = path.join(targetRoot, "api", "database");
+    copy(databaseSrc, databaseDest);
+
+    // docker-compose 실행
+    const databaseRoot = path.join(targetRoot, "api", "database");
+    const commands = [`docker-compose -p ${targetDir} up -d`];
+
+    for await (const c of commands) {
+      const [command, ...args] = c.split(" ");
+      const child = spawn(command, args, { cwd: databaseRoot });
+      const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
+
+      child.on("error", (error) => {
+        spinner.fail();
+        console.error(`❌ Error: ${command}`);
+        console.error(error);
+        throw error;
+      });
+
+      await new Promise((resolve) => {
+        child.on("close", () => {
+          spinner.succeed();
+          resolve("");
+        });
+      });
+    }
+    console.log(`\nA database has been set up in ${databaseRoot}\n`);
+  } else {
+    console.log(
+      `\nTo set up a database using Docker, run the following commands:\n`,
+    );
+    console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
+    console.log(chalk.gray(`  $ docker-compose -p ${targetDir} up -d`));
+    console.log(`\nOr use your preferred database management tool.`);
   }
 }
 

@@ -84,17 +84,22 @@ async function init() {
   });
 
   if (isBerry) {
-    console.log(`Setting up Yarn Berry...`);
+    console.log(`\nSetting up Yarn Berry...`);
     const apiRoot = path.join(targetRoot, "api");
-    execSync("yarn set version berry", { cwd: apiRoot });
-    execSync("yarn dlx @yarnpkg/sdks vscode", { cwd: apiRoot });
-    console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
+    try {
+      execSync("yarn set version berry", { cwd: apiRoot });
+      execSync("yarn install", { cwd: apiRoot });
+      execSync("yarn dlx @yarnpkg/sdks vscode", { cwd: apiRoot });
+      console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
+    } catch (error) {
+      console.error(error);
+    }
   } else {
     console.log(`\nTo set up Yarn Berry, run the following commands:`);
-    console.log(`  cd ${targetDir}`);
+    console.log(`  cd ${targetDir}/api`);
     console.log(`  yarn set version berry`);
+    console.log(`  yarn install`);
     console.log(`  yarn dlx @yarnpkg/sdks vscode`);
-    return;
   }
 }
 

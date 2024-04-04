@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 
 import prompts from "prompts";
+import { execSync } from "node:child_process";
 
 async function init() {
   const defaultProjectName = "pp1";
@@ -72,6 +73,29 @@ async function init() {
   fs.mkdirSync(path.join(targetRoot, "web", "src", "services"), {
     recursive: true,
   });
+
+  console.log(`\n🌲 Created project in ${targetRoot}\n`);
+
+  const { isBerry } = await prompts({
+    type: "confirm",
+    name: "isBerry",
+    message: "Would you like to set up Yarn Berry?",
+    initial: false,
+  });
+
+  if (isBerry) {
+    console.log(`Setting up Yarn Berry...`);
+    const apiRoot = path.join(targetRoot, "api");
+    execSync("yarn set version berry", { cwd: apiRoot });
+    execSync("yarn dlx @yarnpkg/sdks vscode", { cwd: apiRoot });
+    console.log(`\n🌲 Yarn Berry has been set up in ${apiRoot}\n`);
+  } else {
+    console.log(`\nTo set up Yarn Berry, run the following commands:`);
+    console.log(`  cd ${targetDir}`);
+    console.log(`  yarn set version berry`);
+    console.log(`  yarn dlx @yarnpkg/sdks vscode`);
+    return;
+  }
 }
 
 init().catch((e) => {

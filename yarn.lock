@@ -172,9 +172,11 @@ __metadata:
   dependencies:
     "@tsconfig/node18": "npm:^18.2.3"
     "@types/node": "npm:^20.11.30"
+    "@types/progress": "npm:^2"
     "@types/prompts": "npm:^2"
     esbuild: "npm:^0.20.2"
     prettier: "npm:^3.2.5"
+    progress: "npm:^2.0.3"
     prompts: "npm:^2.4.2"
     typescript: "npm:^5.4.3"
     zx: "npm:^7.2.3"
@@ -258,6 +260,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~5.26.4"
   checksum: 10c0/34b9ceb3366fc616f35a3f3a1467478182cc265ff142c02000503161a679d3036d8bbc410d343ae4012a868e879941d64d656bd509674b055c8735aba24d98e2
+  languageName: node
+  linkType: hard
+
+"@types/progress@npm:^2":
+  version: 2.0.7
+  resolution: "@types/progress@npm:2.0.7"
+  dependencies:
+    "@types/node": "npm:*"
+  checksum: 10c0/1e387b59a3a19562e49b9ac43db8fb78d2d3ad9168fa54585a9455f9bb530e43a6a69c30dfb44a6fdd10e4bc7a2fb431d71d514f1bc191c2e1c76d3e0314df74
   languageName: node
   linkType: hard
 
@@ -660,6 +671,13 @@ __metadata:
   bin:
     prettier: bin/prettier.cjs
   checksum: 10c0/ea327f37a7d46f2324a34ad35292af2ad4c4c3c3355da07313339d7e554320f66f65f91e856add8530157a733c6c4a897dc41b577056be5c24c40f739f5ee8c6
+  languageName: node
+  linkType: hard
+
+"progress@npm:^2.0.3":
+  version: 2.0.3
+  resolution: "progress@npm:2.0.3"
+  checksum: 10c0/1697e07cb1068055dbe9fe858d242368ff5d2073639e652b75a7eb1f2a1a8d4afd404d719de23c7b48481a6aa0040686310e2dac2f53d776daa2176d3f96369c
   languageName: node
   linkType: hard
 

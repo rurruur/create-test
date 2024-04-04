@@ -11,8 +11,7 @@ server.register(require("fastify-qs"));
 
 async function bootstrap() {
   await Sonamu.withFastify(server, {
-    contextProvider: (defaultContext, request) => {
-      console.log(request);
+    contextProvider: (defaultContext, _request) => {
       return {
         ...defaultContext,
         //
@@ -26,7 +25,7 @@ async function bootstrap() {
   server
     .listen({ port, host })
     .then(() => {
-      console.log(`Server listening on http://${host}:${port}`);
+      console.log(`🌲 Server listening on http://${host}:${port}`);
       console.timeEnd("total");
     })
     .catch((err) => {

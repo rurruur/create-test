@@ -71,17 +71,15 @@ async function init() {
   }
 
   // 2. Copy package.json and modify name
-  const pkg = JSON.parse(
-    fs.readFileSync(path.join(templateRoot, "api", "package.json"), "utf-8"),
-  );
-  pkg.name = targetDir === "." ? path.basename(path.resolve()) : targetDir;
-  fs.writeFileSync(
-    path.join(targetRoot, "api", "package.json"),
-    JSON.stringify(pkg, null, 2) + "\n",
-  );
-
-  fs.mkdirSync(path.join(targetRoot, "web", "src", "services"), {
-    recursive: true,
+  ["api", "web"].forEach((dir) => {
+    const pkg = JSON.parse(
+      fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
+    );
+    pkg.name = targetDir === "." ? path.basename(path.resolve()) : targetDir;
+    fs.writeFileSync(
+      path.join(targetRoot, dir, "package.json"),
+      JSON.stringify(pkg, null, 2) + "\n",
+    );
   });
 
   console.log(`\n🌲 Created project in ${targetRoot}\n`);
@@ -95,34 +93,9 @@ async function init() {
   });
 
   if (isBerry) {
-    console.log(`\nSetting up Yarn Berry...`);
-    const apiRoot = path.join(targetRoot, "api");
-    const commands = [
-      "yarn set version berry",
-      "yarn install",
-      "yarn dlx @yarnpkg/sdks vscode",
-    ];
-
-    for await (const c of commands) {
-      const [command, ...args] = c.split(" ");
-      const child = spawn(command, args, { cwd: apiRoot });
-      const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
-
-      child.on("error", (error) => {
-        spinner.fail();
-        console.error(`❌ Error: ${command}`);
-        console.error(error);
-        throw error;
-      });
-
-      await new Promise((resolve) => {
-        child.on("close", () => {
-          spinner.succeed();
-          resolve("");
-        });
-      });
+    for await (const dir of ["api", "web"]) {
+      await setupYarnBerry(targetDir, dir);
     }
-    console.log(`\nYarn Berry has been set up in ${apiRoot}\n`);
   } else {
     console.log(`\nTo set up Yarn Berry, run the following commands:\n`);
     console.log(chalk.gray(`  $ cd ${targetDir}/api`));
@@ -187,6 +160,37 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     console.log(chalk.gray(`  $ docker-compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
   }
+}
+
+async function setupYarnBerry(projectName: string, dir: string) {
+  const cwd = path.join(projectName, dir);
+  const commands = [
+    "yarn set version berry",
+    "yarn install",
+    "yarn dlx @yarnpkg/sdks vscode", // TODO: 여기서 vscode 설정하는 거 좀 생각해봐야함. 가이드쪽으로 뺄지?
+  ];
+
+  for await (const c of commands) {
+    const [command, ...args] = c.split(" ");
+    const child = spawn(command, args, { cwd });
+    const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
+
+    child.on("error", (error) => {
+      spinner.fail();
+      console.error(chalk.red(`❌ Error: ${command}`));
+      console.error(error);
+      throw error;
+    });
+
+    await new Promise((resolve) => {
+      child.on("close", () => {
+        spinner.succeed();
+        resolve("");
+      });
+    });
+  }
+
+  console.log(chalk.green(`\nYarn Berry has been set up in ${cwd}\n`));
 }
 
 // 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수

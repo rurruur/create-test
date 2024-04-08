@@ -134,22 +134,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 
     for await (const c of commands) {
       const [command, ...args] = c.split(" ");
-      const child = spawn(command, args, { cwd: databaseRoot });
-      const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
-
-      child.on("error", (error) => {
-        spinner.fail();
-        console.error(`❌ Error: ${command}`);
-        console.error(error);
-        throw error;
-      });
-
-      await new Promise((resolve) => {
-        child.on("close", () => {
-          spinner.succeed();
-          resolve("");
-        });
-      });
+      await executeCommand(command, args, databaseRoot);
     }
     console.log(`\nA database has been set up in ${databaseRoot}\n`);
   } else {
@@ -162,6 +147,34 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
   }
 }
 
+async function executeCommand(command: string, args: string[], cwd: string) {
+  const child = spawn(command, args, { cwd });
+  const spinner = ora(`Running ${command} ${args.join(" ")}`);
+  let startTime: number;
+
+  child.on("spawn", () => {
+    spinner.start();
+    startTime = Date.now();
+  });
+
+  child.on("error", (error) => {
+    spinner.fail();
+    console.error(chalk.red(`❌ Error: ${command}`));
+    console.error(error);
+    throw error;
+  });
+
+  await new Promise((resolve) => {
+    child.on("close", () => {
+      const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
+      spinner.succeed(
+        `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+      );
+      resolve("");
+    });
+  });
+}
+
 async function setupYarnBerry(projectName: string, dir: string) {
   const cwd = path.join(projectName, dir);
   const commands = [
@@ -172,22 +185,7 @@ async function setupYarnBerry(projectName: string, dir: string) {
 
   for await (const c of commands) {
     const [command, ...args] = c.split(" ");
-    const child = spawn(command, args, { cwd });
-    const spinner = ora(`Running ${command} ${args.join(" ")}`).start();
-
-    child.on("error", (error) => {
-      spinner.fail();
-      console.error(chalk.red(`❌ Error: ${command}`));
-      console.error(error);
-      throw error;
-    });
-
-    await new Promise((resolve) => {
-      child.on("close", () => {
-        spinner.succeed();
-        resolve("");
-      });
-    });
+    await executeCommand(command, args, cwd);
   }
 
   console.log(chalk.green(`\nYarn Berry has been set up in ${cwd}\n`));

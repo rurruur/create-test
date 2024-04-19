@@ -1,6 +1,6 @@
 {
   "name": "@nakkim/create-test",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Practice npm initializer",
   "type": "module",
   "bin": "index.js",

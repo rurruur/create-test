@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sonamu-kit/react-sui": "^0.1.11",
+    "@sonamu-kit/react-sui": "^0.1.12",
     "axios": "^0.27.2",
     "jotai": "^2.7.0",
     "lodash-es": "^4.17.21",

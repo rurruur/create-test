@@ -1,5 +1,6 @@
 const fixtureLoader = {
-  // Load fixtures here
+  // 아래와 같이 fixture를 정의합니다.
+  fixture: async () => {},
 };
 
 export async function loadFixtures<K extends keyof typeof fixtureLoader>(

@@ -27,7 +27,7 @@
     "@types/lodash": "^4",
     "@types/luxon": "^3",
     "@types/node": "^20.11.30",
-    "prettier": "^3.2.5",
+    "prettier": "^2.7.1",
     "tsc-watch": "^6.0.4",
     "typescript": "^5.4.3",
     "vite": "^5.2.2",

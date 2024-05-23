@@ -89,7 +89,7 @@ async function init() {
     type: "confirm",
     name: "isBerry",
     message: "Would you like to set up Yarn Berry?",
-    initial: false,
+    initial: true,
   });
 
   if (isBerry) {

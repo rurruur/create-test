@@ -133,14 +133,11 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     const command = `docker-compose --env-file ${envFile} up -d`;
 
     const [c, ...args] = command.split(" ");
-    try {
-      await executeCommand(c, args, databaseRoot);
-      console.log(
-        chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
-      );
-    } catch (e) {
-      console.error(e);
-    }
+    await executeCommand(c, args, databaseRoot);
+
+    console.log(
+      chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
+    );
   } else {
     console.log(
       `\nTo set up a database using Docker, run the following commands:\n`,
@@ -163,9 +160,19 @@ async function executeCommand(command: string, args: string[], cwd: string) {
 
   child.on("error", (error) => {
     spinner.fail();
-    console.error(chalk.red(`❌ Error: ${command}`));
+    console.error(chalk.red(`🚨 Error: ${command}`));
     console.error(error);
     throw error;
+  });
+
+  child.stderr.on("data", (data) => {
+    // console.error(data.toString()); // Container mysql  Creating
+    // Container mysql  Creating 말고 그 외의 에러 메시지가 나오면 프로세스 종료
+    if (!data.toString().includes("Container mysql  Creating")) {
+      spinner.fail();
+      console.error(chalk.red(`🚨 ${data.toString()}`));
+      process.exit(1);
+    }
   });
 
   await new Promise((resolve) => {

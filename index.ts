@@ -133,11 +133,21 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     const command = `docker-compose --env-file ${envFile} up -d`;
 
     const [c, ...args] = command.split(" ");
-    await executeCommand(c, args, databaseRoot);
 
-    console.log(
-      chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
-    );
+    try {
+      await executeCommand(c, args, databaseRoot);
+      console.log(
+        chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
+      );
+    } catch (e) {
+      console.log(`\n❌ Failed to set up a database in ${databaseRoot}`);
+      console.log(
+        `To set up a database using Docker, run the following commands:\n`,
+      );
+      console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
+      console.log(chalk.gray(`  $ docker-compose --env-file ${envFile} up -d`));
+      console.log(`\nOr use your preferred database management tool.`);
+    }
   } else {
     console.log(
       `\nTo set up a database using Docker, run the following commands:\n`,
@@ -150,33 +160,37 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 
 async function executeCommand(command: string, args: string[], cwd: string) {
   const child = spawn(command, args, { cwd });
-  const spinner = ora(`Running ${command} ${args.join(" ")}`);
+  const spinner = ora(`Running ${command} ${args.join(" ")}\n`);
   let startTime: number;
+  let success = true;
 
-  child.on("spawn", () => {
-    spinner.start();
-    startTime = Date.now();
-  });
+  return new Promise((resolve, reject) => {
+    child.on("spawn", () => {
+      spinner.start();
+      startTime = Date.now();
+    });
 
-  child.on("error", (error) => {
-    spinner.fail();
-    console.error(chalk.red(`🚨 Error: ${command}`));
-    console.error(error);
-    throw error;
-  });
-
-  child.stderr.on("data", (data) => {
-    // console.error(data.toString()); // Container mysql  Creating
-    // Container mysql  Creating 말고 그 외의 에러 메시지가 나오면 프로세스 종료
-    if (!data.toString().includes("Container mysql  Creating")) {
+    child.on("error", (error) => {
+      success = false;
       spinner.fail();
-      console.error(chalk.red(`🚨 ${data.toString()}`));
-      process.exit(1);
-    }
-  });
+      console.error(chalk.red(`🚨 Error: ${command}`));
+      console.error(error);
+      reject(error);
+    });
 
-  await new Promise((resolve) => {
+    child.stderr.on("data", (data) => {
+      if (data.toString().includes("Error response from daemon")) {
+        success = false;
+        spinner.fail();
+        console.error(chalk.yellow(data.toString()));
+        reject(data.toString());
+      }
+    });
+
     child.on("close", () => {
+      if (!success) {
+        return;
+      }
       const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
       spinner.succeed(
         `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,

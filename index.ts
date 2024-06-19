@@ -130,13 +130,17 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     // docker-compose 실행
     const databaseRoot = path.join(targetRoot, "api", "database");
     const envFile = path.join(targetRoot, "api", ".env");
-    const commands = [`docker-compose --env-file ${envFile} up -d`];
+    const command = `docker-compose --env-file ${envFile} up -d`;
 
-    for await (const c of commands) {
-      const [command, ...args] = c.split(" ");
-      await executeCommand(command, args, databaseRoot);
+    const [c, ...args] = command.split(" ");
+    try {
+      await executeCommand(c, args, databaseRoot);
+      console.log(
+        chalk.green(`\nA database has been set up in ${databaseRoot}\n`),
+      );
+    } catch (e) {
+      console.error(e);
     }
-    console.log(`\nA database has been set up in ${databaseRoot}\n`);
   } else {
     console.log(
       `\nTo set up a database using Docker, run the following commands:\n`,
@@ -204,7 +208,7 @@ async function promptDatabase(projectName: string) {
       type: "text",
       name: "MYSQL_CONTAINER_NAME",
       message: "Enter the MySQL container name:",
-      initial: "mysql",
+      initial: `${projectName}-mysql`,
     },
     {
       type: "text",

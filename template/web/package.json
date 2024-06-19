@@ -9,7 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@sonamu-kit/react-sui": "^0.1.12",
+    "@sonamu-kit/react-sui": "^0.1.14",
     "axios": "^0.27.2",
     "jotai": "^2.7.0",
     "lodash-es": "^4.17.21",
@@ -36,5 +36,5 @@
     "typescript": "^5.2.2",
     "vite": "^5.0.10"
   },
-  "packageManager": "yarn@4.1.1"
+  "packageManager": "yarn@4.3.0"
 }

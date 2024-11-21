@@ -21,6 +21,16 @@ async function init() {
           message: "Project name:",
           initial: defaultProjectName,
         },
+        {
+          type: "select",
+          name: "dbClient",
+          message: "Select a database client:",
+          choices: [
+            { title: "Kysely", value: "kysely" },
+            { title: "Knex", value: "knex" },
+          ],
+          initial: 0,
+        },
       ],
       {
         onCancel: () => {
@@ -33,10 +43,10 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir } = result;
+  let { targetDir, dbClient } = result;
 
   const targetRoot = path.join(process.cwd(), targetDir);
-  const templateRoot = new URL("./template", import.meta.url).pathname;
+  const templateRoot = new URL("./template/src", import.meta.url).pathname;
 
   const copy = (src: string, dest: string) => {
     const stat = fs.statSync(src);
@@ -51,6 +61,13 @@ async function init() {
       // .gitkeep 제외, 디렉토리 생성 로그 출력
       if (path.basename(src) === ".gitkeep") {
         console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
+        return;
+      }
+      // DB Client에 따라 db.ts 생성
+      if (path.basename(src) === "db.ts") {
+        src = new URL(`./template/configs/db.${dbClient}.ts`, import.meta.url)
+          .pathname;
+        fs.copyFileSync(src, dest);
         return;
       }
       fs.copyFileSync(src, dest);
@@ -130,7 +147,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
     // docker-compose 실행
     const databaseRoot = path.join(targetRoot, "api", "database");
     const envFile = path.join(targetRoot, "api", ".env");
-    const command = `docker-compose --env-file ${envFile} up -d`;
+    const command = `docker compose --env-file ${envFile} up -d`;
 
     const [c, ...args] = command.split(" ");
 
@@ -145,7 +162,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
         `To set up a database using Docker, run the following commands:\n`,
       );
       console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
-      console.log(chalk.gray(`  $ docker-compose --env-file ${envFile} up -d`));
+      console.log(chalk.gray(`  $ docker compose --env-file ${envFile} up -d`));
       console.log(`\nOr use your preferred database management tool.`);
     }
   } else {
@@ -153,7 +170,7 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
       `\nTo set up a database using Docker, run the following commands:\n`,
     );
     console.log(chalk.gray(`  $ cd ${targetDir}/api/database`));
-    console.log(chalk.gray(`  $ docker-compose -p ${targetDir} up -d`));
+    console.log(chalk.gray(`  $ docker compose -p ${targetDir} up -d`));
     console.log(`\nOr use your preferred database management tool.`);
   }
 }
@@ -205,7 +222,7 @@ async function setupYarnBerry(projectName: string, dir: string) {
   const commands = [
     "yarn set version berry",
     "yarn install",
-    "yarn dlx @yarnpkg/sdks vscode", // TODO: 여기서 vscode 설정하는 거 좀 생각해봐야함. 가이드쪽으로 뺄지?
+    "yarn dlx @yarnpkg/sdks vscode",
   ];
 
   for await (const c of commands) {

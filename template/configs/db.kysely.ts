@@ -1,3 +1,4 @@
+require("dotenv").config();
 import { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {

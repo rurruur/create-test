@@ -11,7 +11,7 @@ import ora from "ora";
 async function init() {
   const defaultProjectName = "pp1";
 
-  let result: prompts.Answers<"targetDir">;
+  let result: prompts.Answers<"targetDir" | "dbClient">;
   try {
     result = await prompts(
       [

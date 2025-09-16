@@ -208,12 +208,14 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 async function executeCommand(command: string, args: string[], cwd: string) {
   const child = spawn(command, args, {
     cwd,
-    stdio: "inherit",
+    stdio: ["inherit", "pipe", "pipe"], // stdin은 상속, stdout/stderr는 pipe로 처리
     env: { ...process.env }, // 환경변수 상속
   });
-  const spinner = ora(`Running ${command} ${args.join(" ")}\n`);
+  const spinner = ora(`Running ${command} ${args.join(" ")}`);
   let startTime: number;
   let success = true;
+  let output = "";
+  let errorOutput = "";
 
   return new Promise((resolve, reject) => {
     child.on("spawn", () => {
@@ -221,39 +223,37 @@ async function executeCommand(command: string, args: string[], cwd: string) {
       startTime = Date.now();
     });
 
+    // stdout 데이터 수집 (표시하지 않고 저장만)
+    child.stdout?.on("data", (data) => {
+      output += data.toString();
+    });
+
+    // stderr 데이터 수집 (표시하지 않고 저장만)
+    child.stderr?.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
     child.on("error", (error) => {
       success = false;
-      spinner.fail();
+      spinner.fail(`${command} ${args.join(" ")}`);
       console.error(chalk.red(`🚨 Error: ${command}`));
       console.error(error);
       reject(error);
     });
 
-    child.stderr.on("data", (data) => {
-      const errorText = data.toString();
-      console.error(chalk.red(`STDERR: ${errorText}`)); // 모든 stderr 출력
-
-      if (
-        errorText.includes("Error response from daemon") ||
-        errorText.includes("command not found") ||
-        errorText.includes("not recognized")
-      ) {
-        success = false;
-        spinner.fail();
-        console.error(chalk.yellow(errorText));
-        reject(errorText);
-      }
-    });
-
     child.on("close", (code) => {
       if (!success || code !== 0) {
         if (code !== 0) {
-          spinner.fail();
+          spinner.fail(`${command} ${args.join(" ")}`);
           console.error(
             chalk.red(
               `Command failed with exit code ${code}: ${command} ${args.join(" ")}`,
             ),
           );
+          // 에러가 있으면 stderr 출력
+          if (errorOutput) {
+            console.error(errorOutput);
+          }
           reject(new Error(`Command failed with exit code ${code}`));
         }
         return;
@@ -290,7 +290,6 @@ async function setupYarnBerry(projectName: string, dir: string) {
     // 3. VSCode SDK 설정 (선택사항)
     try {
       await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
-      console.log(chalk.green(`✅ VSCode SDK configured successfully`));
     } catch (error) {
       console.log(chalk.yellow(`⚠️  VSCode SDK setup skipped (optional)`));
       console.log(

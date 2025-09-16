@@ -205,7 +205,13 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
   }
 }
 
-async function executeCommand(command: string, args: string[], cwd: string) {
+async function executeCommand(
+  command: string,
+  args: string[],
+  cwd: string,
+  options: { showOutput?: boolean } = {},
+) {
+  const { showOutput = false } = options;
   const child = spawn(command, args, {
     cwd,
     stdio: ["inherit", "pipe", "pipe"], // stdin은 상속, stdout/stderr는 pipe로 처리
@@ -223,12 +229,12 @@ async function executeCommand(command: string, args: string[], cwd: string) {
       startTime = Date.now();
     });
 
-    // stdout 데이터 수집 (표시하지 않고 저장만)
+    // stdout 데이터 수집
     child.stdout?.on("data", (data) => {
       output += data.toString();
     });
 
-    // stderr 데이터 수집 (표시하지 않고 저장만)
+    // stderr 데이터 수집
     child.stderr?.on("data", (data) => {
       errorOutput += data.toString();
     });
@@ -259,9 +265,19 @@ async function executeCommand(command: string, args: string[], cwd: string) {
         return;
       }
       const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
-      spinner.succeed(
-        `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
-      );
+
+      // 출력 표시 옵션이 활성화된 경우 결과 출력
+      if (showOutput && output.trim()) {
+        spinner.succeed(
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+        );
+        console.log(chalk.cyan(output.trim()));
+      } else {
+        spinner.succeed(
+          `${command} ${args.join(" ")} ${chalk.dim(`${durationS}s`)}`,
+        );
+      }
+
       resolve("");
     });
   });
@@ -273,21 +289,34 @@ async function setupYarnBerry(projectName: string, dir: string) {
   try {
     console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
 
-    // 현재 yarn 버전 확인
-    console.log("Checking current yarn version...");
+    // 1. 현재 상태 확인
+    console.log("=== Initial State ===");
+    await executeCommand("which", ["yarn"], cwd);
     await executeCommand("yarn", ["--version"], cwd);
 
-    // 1. Yarn Berry 버전 설정
-    await executeCommand("yarn", ["set", "version", "stable"], cwd);
+    // 2. Corepack 활성화 시도
+    try {
+      console.log("=== Enabling Corepack ===");
+      await executeCommand("corepack", ["enable"], cwd);
+    } catch (e) {
+      console.log("Corepack not available or already enabled");
+    }
+
+    // 현재 yarn 버전 확인
+    console.log("Checking current yarn version...");
+    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
+
+    // 3. Yarn Berry 버전 설정
+    await executeCommand("yarn", ["set", "version", "berry"], cwd);
 
     // 설정 후 버전 확인
     console.log("Verifying yarn version after setup...");
-    await executeCommand("yarn", ["--version"], cwd);
+    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
 
-    // 2. 의존성 설치
+    // 4. 의존성 설치
     await executeCommand("yarn", ["install"], cwd);
 
-    // 3. VSCode SDK 설정 (선택사항)
+    // 5. VSCode SDK 설정 (선택사항)
     try {
       await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
     } catch (error) {

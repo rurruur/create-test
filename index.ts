@@ -205,6 +205,45 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
   }
 }
 
+async function getCommandOutput(
+  command: string,
+  args: string[],
+  cwd: string,
+): Promise<string> {
+  const child = spawn(command, args, {
+    cwd,
+    stdio: ["inherit", "pipe", "pipe"],
+    env: { ...process.env },
+  });
+
+  let output = "";
+  let errorOutput = "";
+
+  return new Promise((resolve, reject) => {
+    child.stdout?.on("data", (data) => {
+      output += data.toString();
+    });
+
+    child.stderr?.on("data", (data) => {
+      errorOutput += data.toString();
+    });
+
+    child.on("error", (error) => {
+      reject(error);
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(`Command failed with exit code ${code}: ${errorOutput}`),
+        );
+      } else {
+        resolve(output);
+      }
+    });
+  });
+}
+
 async function executeCommand(
   command: string,
   args: string[],
@@ -291,47 +330,32 @@ async function setupYarnBerry(projectName: string, dir: string) {
 
     // 1. 현재 상태 확인
     console.log("=== Initial State ===");
+
+    // Yarn 관련 상세 정보
+    console.log("=== Yarn Information ===");
     await executeCommand("which", ["yarn"], cwd, { showOutput: true });
-    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
 
     // 2. Corepack 활성화 시도
     try {
       console.log("=== Enabling Corepack ===");
       await executeCommand("corepack", ["enable"], cwd, { showOutput: true });
+
+      await executeCommand("corepack", ["prepare", "yarn@stable"], cwd, {
+        showOutput: true,
+      });
     } catch (e) {
       console.log("Corepack not available or already enabled");
     }
 
-    // 3. 현재 작업 디렉토리와 권한 확인
-    console.log("=== Directory Information ===");
-    await executeCommand("pwd", [], cwd, { showOutput: true });
-    await executeCommand("ls", ["-la"], cwd, { showOutput: true });
-
-    // 4. Yarn Berry 버전 설정 (더 자세한 출력)
-    console.log("=== Setting Yarn Berry Version ===");
-    await executeCommand("yarn", ["set", "version", "berry"], cwd, {
-      showOutput: true,
-    });
-
-    // 5. 설정 파일 확인
-    console.log("=== Checking Configuration Files ===");
-    try {
-      await executeCommand("ls", ["-la", ".yarnrc.yml"], cwd, {
-        showOutput: true,
-      });
-      await executeCommand("cat", [".yarnrc.yml"], cwd, { showOutput: true });
-    } catch (e) {
-      console.log("No .yarnrc.yml file found or not readable");
-    }
-
-    // 6. 최종 버전 확인
+    // 5. 최종 버전 확인
     console.log("=== Final Version Check ===");
     await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
 
-    // 4. 의존성 설치
+    // 6. 의존성 설치
+    console.log("=== Installing Dependencies ===");
     await executeCommand("yarn", ["install"], cwd);
 
-    // 5. VSCode SDK 설정 (선택사항)
+    // 7. VSCode SDK 설정 (선택사항)
     try {
       await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
     } catch (error) {

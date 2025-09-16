@@ -8,10 +8,39 @@ import { spawn } from "node:child_process";
 import chalk from "chalk";
 import ora from "ora";
 
-async function init() {
-  const defaultProjectName = "pp1";
+// 통합 버전 관리
+const PACKAGE_VERSIONS = {
+  sonamu: "^0.4.11",
+  reactSui: "^0.1.14",
+  ui: "^0.4.1",
+} as const;
 
-  let result: prompts.Answers<"targetDir" | "dbClient">;
+// package.json 버전 업데이트 함수
+function updatePackageVersions(pkg: any): any {
+  if (pkg.dependencies) {
+    if (pkg.dependencies.sonamu) {
+      pkg.dependencies.sonamu = PACKAGE_VERSIONS.sonamu;
+    }
+    if (pkg.dependencies["@sonamu-kit/react-sui"]) {
+      pkg.dependencies["@sonamu-kit/react-sui"] = PACKAGE_VERSIONS.reactSui;
+    }
+  }
+
+  if (pkg.devDependencies) {
+    if (pkg.devDependencies["@sonamu-kit/react-sui"]) {
+      pkg.devDependencies["@sonamu-kit/react-sui"] = PACKAGE_VERSIONS.reactSui;
+    }
+    if (pkg.devDependencies["@sonamu-kit/ui"]) {
+      pkg.devDependencies["@sonamu-kit/ui"] = PACKAGE_VERSIONS.ui;
+    }
+  }
+
+  return pkg;
+}
+
+async function init() {
+  let result: prompts.Answers<"targetDir">;
+
   try {
     result = await prompts(
       [
@@ -19,18 +48,18 @@ async function init() {
           type: "text",
           name: "targetDir",
           message: "Project name:",
-          initial: defaultProjectName,
+          initial: "my-sonamu-app",
         },
-        {
-          type: "select",
-          name: "dbClient",
-          message: "Select a database client:",
-          choices: [
-            { title: "Kysely", value: "kysely" },
-            { title: "Knex", value: "knex" },
-          ],
-          initial: 0,
-        },
+        // {
+        //   type: "select",
+        //   name: "dbClient",
+        //   message: "Select a database client:",
+        //   choices: [
+        //     { title: "Kysely", value: "kysely" },
+        //     { title: "Knex", value: "knex" },
+        //   ],
+        //   initial: 0,
+        // },
       ],
       {
         onCancel: () => {
@@ -43,7 +72,7 @@ async function init() {
     process.exit(1);
   }
 
-  let { targetDir, dbClient } = result;
+  let { targetDir } = result;
 
   const targetRoot = path.join(process.cwd(), targetDir);
   const templateRoot = new URL("./template/src", import.meta.url).pathname;
@@ -63,13 +92,6 @@ async function init() {
         console.log(`${chalk.green("CREATE")} ${dest.split(".gitkeep")[0]}`);
         return;
       }
-      // DB Client에 따라 db.ts 생성
-      if (path.basename(src) === "db.ts") {
-        src = new URL(`./template/configs/db.${dbClient}.ts`, import.meta.url)
-          .pathname;
-        fs.copyFileSync(src, dest);
-        return;
-      }
       fs.copyFileSync(src, dest);
       console.log(`${chalk.green("CREATE")} ${dest}`);
     }
@@ -87,15 +109,23 @@ async function init() {
     write(file);
   }
 
-  // 2. Copy package.json and modify name
+  // 2. Copy package.json and modify name and versions
   ["api", "web"].forEach((dir) => {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
     );
     pkg.name = targetDir === "." ? path.basename(path.resolve()) : targetDir;
+
+    // 버전 동기화 적용
+    const updatedPkg = updatePackageVersions(pkg);
+
     fs.writeFileSync(
       path.join(targetRoot, dir, "package.json"),
-      JSON.stringify(pkg, null, 2) + "\n",
+      JSON.stringify(updatedPkg, null, 2) + "\n",
+    );
+
+    console.log(
+      `${chalk.green("UPDATE")} ${path.join(targetRoot, dir, "package.json")} - versions synchronized`,
     );
   });
 
@@ -138,7 +168,7 @@ async function init() {
 DB_HOST=0.0.0.0
 DB_USER=root
 DB_PASSWORD=${answers.DB_PASSWORD}
-DOCKER_PROJECT_NAME=${answers.DOCKER_PROJECT_NAME}
+COMPOSE_PROJECT_NAME=${answers.COMPOSE_PROJECT_NAME}
 MYSQL_CONTAINER_NAME="${answers.MYSQL_CONTAINER_NAME}"
 MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 `;
@@ -238,7 +268,7 @@ async function promptDatabase(projectName: string) {
   const answers = await prompts([
     {
       type: "text",
-      name: "DOCKER_PROJECT_NAME",
+      name: "COMPOSE_PROJECT_NAME",
       message: "Enter the Docker project name:",
       initial: `${projectName}`,
     },

@@ -1,7 +1,8 @@
-name: ${DOCKER_PROJECT_NAME}
+version: "3.8"
+name: ${COMPOSE_PROJECT_NAME}
 services:
   mysql80:
-    platform: linux/amd64
+    platform: linux/arm64
     image: mysql:8.0
     container_name: ${MYSQL_CONTAINER_NAME}
     volumes:
@@ -13,4 +14,4 @@ services:
       MYSQL_ROOT_HOST: "%"
       TZ: Asia/Seoul
     ports:
-      - 3306:3306
+      - "3306:3306"

@@ -208,8 +208,8 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 async function executeCommand(command: string, args: string[], cwd: string) {
   const child = spawn(command, args, {
     cwd,
-    shell: true, // shell을 통해 실행하여 PATH 환경변수 사용
-    stdio: ["pipe", "pipe", "pipe"], // stdio 명시적 설정
+    stdio: "inherit",
+    env: { ...process.env }, // 환경변수 상속
   });
   const spinner = ora(`Running ${command} ${args.join(" ")}\n`);
   let startTime: number;
@@ -271,15 +271,20 @@ async function setupYarnBerry(projectName: string, dir: string) {
   const cwd = path.resolve(projectName, dir);
 
   try {
-    // 1. Yarn Berry 버전 설정
     console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
-    await executeCommand("yarn", ["set", "version", "berry"], cwd);
 
-    // 1.5. PnP 모드 명시적 활성화
-    await executeCommand("yarn", ["config", "set", "nodeLinker", "pnp"], cwd);
-    console.log(chalk.green(`PnP mode activated`));
+    // 현재 yarn 버전 확인
+    console.log("Checking current yarn version...");
+    await executeCommand("yarn", ["--version"], cwd);
 
-    // 2. 의존성 설치 (이제 PnP 모드로 설치됨)
+    // 1. Yarn Berry 버전 설정
+    await executeCommand("yarn", ["set", "version", "stable"], cwd);
+
+    // 설정 후 버전 확인
+    console.log("Verifying yarn version after setup...");
+    await executeCommand("yarn", ["--version"], cwd);
+
+    // 2. 의존성 설치
     await executeCommand("yarn", ["install"], cwd);
 
     // 3. VSCode SDK 설정 (선택사항)

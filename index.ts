@@ -234,8 +234,17 @@ async function executeCommand(command: string, args: string[], cwd: string) {
       }
     });
 
-    child.on("close", () => {
-      if (!success) {
+    child.on("close", (code) => {
+      if (!success || code !== 0) {
+        if (code !== 0) {
+          spinner.fail();
+          console.error(
+            chalk.red(
+              `Command failed with exit code ${code}: ${command} ${args.join(" ")}`,
+            ),
+          );
+          reject(new Error(`Command failed with exit code ${code}`));
+        }
         return;
       }
       const durationS = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -248,7 +257,7 @@ async function executeCommand(command: string, args: string[], cwd: string) {
 }
 
 async function setupYarnBerry(projectName: string, dir: string) {
-  const cwd = path.join(projectName, dir);
+  const cwd = path.resolve(projectName, dir);
 
   try {
     // 1. Yarn Berry 버전 설정

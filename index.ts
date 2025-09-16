@@ -206,7 +206,11 @@ MYSQL_DATABASE=${answers.MYSQL_DATABASE}
 }
 
 async function executeCommand(command: string, args: string[], cwd: string) {
-  const child = spawn(command, args, { cwd });
+  const child = spawn(command, args, {
+    cwd,
+    shell: true, // shell을 통해 실행하여 PATH 환경변수 사용
+    stdio: ["pipe", "pipe", "pipe"], // stdio 명시적 설정
+  });
   const spinner = ora(`Running ${command} ${args.join(" ")}\n`);
   let startTime: number;
   let success = true;
@@ -226,11 +230,18 @@ async function executeCommand(command: string, args: string[], cwd: string) {
     });
 
     child.stderr.on("data", (data) => {
-      if (data.toString().includes("Error response from daemon")) {
+      const errorText = data.toString();
+      console.error(chalk.red(`STDERR: ${errorText}`)); // 모든 stderr 출력
+
+      if (
+        errorText.includes("Error response from daemon") ||
+        errorText.includes("command not found") ||
+        errorText.includes("not recognized")
+      ) {
         success = false;
         spinner.fail();
-        console.error(chalk.yellow(data.toString()));
-        reject(data.toString());
+        console.error(chalk.yellow(errorText));
+        reject(errorText);
       }
     });
 
@@ -281,8 +292,18 @@ async function setupYarnBerry(projectName: string, dir: string) {
     // 3. 의존성 설치
     await executeCommand("yarn", ["install"], cwd);
 
-    // 4. VSCode SDK 설정
-    await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
+    // 4. VSCode SDK 설정 (선택사항)
+    try {
+      await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
+      console.log(chalk.green(`✅ VSCode SDK configured successfully`));
+    } catch (error) {
+      console.log(chalk.yellow(`⚠️  VSCode SDK setup skipped (optional)`));
+      console.log(
+        chalk.gray(
+          `   You can run this manually later: yarn dlx @yarnpkg/sdks vscode`,
+        ),
+      );
+    }
 
     console.log(chalk.green(`✅ Yarn Berry has been set up in ${cwd}\n`));
   } catch (error) {

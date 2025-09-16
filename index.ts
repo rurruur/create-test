@@ -291,26 +291,41 @@ async function setupYarnBerry(projectName: string, dir: string) {
 
     // 1. 현재 상태 확인
     console.log("=== Initial State ===");
-    await executeCommand("which", ["yarn"], cwd);
-    await executeCommand("yarn", ["--version"], cwd);
+    await executeCommand("which", ["yarn"], cwd, { showOutput: true });
+    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
 
     // 2. Corepack 활성화 시도
     try {
       console.log("=== Enabling Corepack ===");
-      await executeCommand("corepack", ["enable"], cwd);
+      await executeCommand("corepack", ["enable"], cwd, { showOutput: true });
     } catch (e) {
       console.log("Corepack not available or already enabled");
     }
 
-    // 현재 yarn 버전 확인
-    console.log("Checking current yarn version...");
-    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
+    // 3. 현재 작업 디렉토리와 권한 확인
+    console.log("=== Directory Information ===");
+    await executeCommand("pwd", [], cwd, { showOutput: true });
+    await executeCommand("ls", ["-la"], cwd, { showOutput: true });
 
-    // 3. Yarn Berry 버전 설정
-    await executeCommand("yarn", ["set", "version", "berry"], cwd);
+    // 4. Yarn Berry 버전 설정 (더 자세한 출력)
+    console.log("=== Setting Yarn Berry Version ===");
+    await executeCommand("yarn", ["set", "version", "berry"], cwd, {
+      showOutput: true,
+    });
 
-    // 설정 후 버전 확인
-    console.log("Verifying yarn version after setup...");
+    // 5. 설정 파일 확인
+    console.log("=== Checking Configuration Files ===");
+    try {
+      await executeCommand("ls", ["-la", ".yarnrc.yml"], cwd, {
+        showOutput: true,
+      });
+      await executeCommand("cat", [".yarnrc.yml"], cwd, { showOutput: true });
+    } catch (e) {
+      console.log("No .yarnrc.yml file found or not readable");
+    }
+
+    // 6. 최종 버전 확인
+    console.log("=== Final Version Check ===");
     await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
 
     // 4. 의존성 설치

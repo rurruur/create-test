@@ -114,7 +114,7 @@ async function init() {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
     );
-    pkg.name = targetDir === "." ? path.basename(path.resolve()) : targetDir;
+    pkg.name = `${targetDir}-${dir}`;
 
     // 버전 동기화 적용
     const updatedPkg = updatePackageVersions(pkg);
@@ -249,18 +249,38 @@ async function executeCommand(command: string, args: string[], cwd: string) {
 
 async function setupYarnBerry(projectName: string, dir: string) {
   const cwd = path.join(projectName, dir);
-  const commands = [
-    "yarn set version berry",
-    "yarn install",
-    "yarn dlx @yarnpkg/sdks vscode",
-  ];
 
-  for await (const c of commands) {
-    const [command, ...args] = c.split(" ");
-    await executeCommand(command, args, cwd);
+  try {
+    // 1. Yarn Berry 버전 설정
+    console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
+    await executeCommand("yarn", ["set", "version", "berry"], cwd);
+
+    // 2. 기존 node_modules 및 yarn.lock 정리 (있다면)
+    const nodeModulesPath = path.join(cwd, "node_modules");
+    const yarnLockPath = path.join(cwd, "yarn.lock");
+
+    if (fs.existsSync(nodeModulesPath)) {
+      fs.rmSync(nodeModulesPath, { recursive: true, force: true });
+      console.log(chalk.yellow(`Cleaned up ${nodeModulesPath}`));
+    }
+
+    if (fs.existsSync(yarnLockPath)) {
+      fs.unlinkSync(yarnLockPath);
+      console.log(chalk.yellow(`Cleaned up ${yarnLockPath}`));
+    }
+
+    // 3. 의존성 설치
+    await executeCommand("yarn", ["install"], cwd);
+
+    // 4. VSCode SDK 설정
+    await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
+
+    console.log(chalk.green(`✅ Yarn Berry has been set up in ${cwd}\n`));
+  } catch (error) {
+    console.error(chalk.red(`❌ Failed to set up Yarn Berry in ${cwd}`));
+    console.error(error);
+    throw error;
   }
-
-  console.log(chalk.green(`\nYarn Berry has been set up in ${cwd}\n`));
 }
 
 // 프롬프트로 MYSQL_CONTAINER_NAME, MYSQL_DATABASE, DB_PASSWORD 입력받는 함수

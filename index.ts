@@ -291,7 +291,7 @@ async function setupYarnBerry(projectName: string, dir: string) {
     );
 
     // 2. Yarn 버전 설정
-    // await executeCommand("yarn", ["set", "version", "stable"], cwd);
+    await executeCommand("yarn", ["set", "version", "stable"], cwd);
 
     // 3. 의존성 설치
     await executeCommand("yarn", ["install"], cwd);

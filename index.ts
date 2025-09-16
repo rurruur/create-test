@@ -340,12 +340,21 @@ async function setupYarnBerry(projectName: string, dir: string) {
       console.log("=== Enabling Corepack ===");
       await executeCommand("corepack", ["enable"], cwd, { showOutput: true });
 
-      await executeCommand("corepack", ["prepare", "yarn@stable"], cwd, {
-        showOutput: true,
-      });
+      await executeCommand(
+        "corepack",
+        ["prepare", "yarn@stable", "--activate"],
+        cwd,
+        {
+          showOutput: true,
+        },
+      );
     } catch (e) {
       console.log("Corepack not available or already enabled");
     }
+
+    await executeCommand("yarn", ["set", "version", "stable"], cwd, {
+      showOutput: true,
+    });
 
     // 5. 최종 버전 확인
     console.log("=== Final Version Check ===");

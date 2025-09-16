@@ -8,36 +8,6 @@ import { spawn } from "node:child_process";
 import chalk from "chalk";
 import ora from "ora";
 
-// 통합 버전 관리
-const PACKAGE_VERSIONS = {
-  sonamu: "^0.4.11",
-  reactSui: "^0.1.14",
-  ui: "^0.4.1",
-} as const;
-
-// package.json 버전 업데이트 함수
-function updatePackageVersions(pkg: any): any {
-  if (pkg.dependencies) {
-    if (pkg.dependencies.sonamu) {
-      pkg.dependencies.sonamu = PACKAGE_VERSIONS.sonamu;
-    }
-    if (pkg.dependencies["@sonamu-kit/react-sui"]) {
-      pkg.dependencies["@sonamu-kit/react-sui"] = PACKAGE_VERSIONS.reactSui;
-    }
-  }
-
-  if (pkg.devDependencies) {
-    if (pkg.devDependencies["@sonamu-kit/react-sui"]) {
-      pkg.devDependencies["@sonamu-kit/react-sui"] = PACKAGE_VERSIONS.reactSui;
-    }
-    if (pkg.devDependencies["@sonamu-kit/ui"]) {
-      pkg.devDependencies["@sonamu-kit/ui"] = PACKAGE_VERSIONS.ui;
-    }
-  }
-
-  return pkg;
-}
-
 async function init() {
   let result: prompts.Answers<"targetDir">;
 
@@ -50,16 +20,6 @@ async function init() {
           message: "Project name:",
           initial: "my-sonamu-app",
         },
-        // {
-        //   type: "select",
-        //   name: "dbClient",
-        //   message: "Select a database client:",
-        //   choices: [
-        //     { title: "Kysely", value: "kysely" },
-        //     { title: "Knex", value: "knex" },
-        //   ],
-        //   initial: 0,
-        // },
       ],
       {
         onCancel: () => {
@@ -109,23 +69,16 @@ async function init() {
     write(file);
   }
 
-  // 2. Copy package.json and modify name and versions
+  // 2. Copy package.json and modify name
   ["api", "web"].forEach((dir) => {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(templateRoot, dir, "package.json"), "utf-8"),
     );
     pkg.name = `${targetDir}-${dir}`;
 
-    // 버전 동기화 적용
-    const updatedPkg = updatePackageVersions(pkg);
-
     fs.writeFileSync(
       path.join(targetRoot, dir, "package.json"),
-      JSON.stringify(updatedPkg, null, 2) + "\n",
-    );
-
-    console.log(
-      `${chalk.green("UPDATE")} ${path.join(targetRoot, dir, "package.json")} - versions synchronized`,
+      JSON.stringify(pkg, null, 2) + "\n",
     );
   });
 
@@ -156,7 +109,7 @@ async function init() {
     type: "confirm",
     name: "isDatabase",
     message: "Would you like to set up a database using Docker?",
-    initial: false,
+    initial: true,
   });
 
   if (isDatabase) {
@@ -328,53 +281,23 @@ async function setupYarnBerry(projectName: string, dir: string) {
   try {
     console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
 
-    // 1. 현재 상태 확인
-    console.log("=== Initial State ===");
+    // 1. Corepack 활성화
+    await executeCommand("npm", ["install", "-g", "corepack"], cwd);
+    await executeCommand("corepack", ["enable"], cwd);
+    await executeCommand(
+      "corepack",
+      ["prepare", "yarn@stable", "--activate"],
+      cwd,
+    );
 
-    // Yarn 관련 상세 정보
-    console.log("=== Yarn Information ===");
-    await executeCommand("which", ["yarn"], cwd, { showOutput: true });
+    // 2. Yarn 버전 설정
+    // await executeCommand("yarn", ["set", "version", "stable"], cwd);
 
-    // 2. Corepack 활성화 시도
-    try {
-      console.log("=== Enabling Corepack ===");
-      await executeCommand("corepack", ["enable"], cwd, { showOutput: true });
-
-      await executeCommand(
-        "corepack",
-        ["prepare", "yarn@stable", "--activate"],
-        cwd,
-        {
-          showOutput: true,
-        },
-      );
-    } catch (e) {
-      console.log("Corepack not available or already enabled");
-    }
-
-    await executeCommand("yarn", ["set", "version", "stable"], cwd, {
-      showOutput: true,
-    });
-
-    // 5. 최종 버전 확인
-    console.log("=== Final Version Check ===");
-    await executeCommand("yarn", ["--version"], cwd, { showOutput: true });
-
-    // 6. 의존성 설치
-    console.log("=== Installing Dependencies ===");
+    // 3. 의존성 설치
     await executeCommand("yarn", ["install"], cwd);
 
-    // 7. VSCode SDK 설정 (선택사항)
-    try {
-      await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
-    } catch (error) {
-      console.log(chalk.yellow(`⚠️  VSCode SDK setup skipped (optional)`));
-      console.log(
-        chalk.gray(
-          `   You can run this manually later: yarn dlx @yarnpkg/sdks vscode`,
-        ),
-      );
-    }
+    // 4. VSCode SDK 설치
+    await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
 
     console.log(chalk.green(`✅ Yarn Berry has been set up in ${cwd}\n`));
   } catch (error) {

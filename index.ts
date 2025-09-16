@@ -275,24 +275,14 @@ async function setupYarnBerry(projectName: string, dir: string) {
     console.log(chalk.blue(`Setting up Yarn Berry in ${cwd}...`));
     await executeCommand("yarn", ["set", "version", "berry"], cwd);
 
-    // 2. 기존 node_modules 및 yarn.lock 정리 (있다면)
-    const nodeModulesPath = path.join(cwd, "node_modules");
-    const yarnLockPath = path.join(cwd, "yarn.lock");
+    // 1.5. PnP 모드 명시적 활성화
+    await executeCommand("yarn", ["config", "set", "nodeLinker", "pnp"], cwd);
+    console.log(chalk.green(`PnP mode activated`));
 
-    if (fs.existsSync(nodeModulesPath)) {
-      fs.rmSync(nodeModulesPath, { recursive: true, force: true });
-      console.log(chalk.yellow(`Cleaned up ${nodeModulesPath}`));
-    }
-
-    if (fs.existsSync(yarnLockPath)) {
-      fs.unlinkSync(yarnLockPath);
-      console.log(chalk.yellow(`Cleaned up ${yarnLockPath}`));
-    }
-
-    // 3. 의존성 설치
+    // 2. 의존성 설치 (이제 PnP 모드로 설치됨)
     await executeCommand("yarn", ["install"], cwd);
 
-    // 4. VSCode SDK 설정 (선택사항)
+    // 3. VSCode SDK 설정 (선택사항)
     try {
       await executeCommand("yarn", ["dlx", "@yarnpkg/sdks", "vscode"], cwd);
       console.log(chalk.green(`✅ VSCode SDK configured successfully`));

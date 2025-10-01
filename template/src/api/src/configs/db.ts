@@ -2,7 +2,6 @@ require("dotenv").config();
 import { SonamuDBBaseConfig } from "sonamu";
 
 const baseconfig: SonamuDBBaseConfig = {
-  client: "knex",
   database: process.env.MYSQL_DATABASE!,
   defaultOptions: {
     connection: {
